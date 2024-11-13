@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 void main() {
   runApp(QuizApp());
@@ -9,6 +10,7 @@ class QuizApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Quiz App',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.blue),
       home: QuizPage(),
     );
@@ -29,6 +31,11 @@ class _QuizPageState extends State<QuizPage> {
   bool _isAnswerCorrect = false;
   bool _isAnswerSelected = false;
   String _feedbackMessage = '';
+  int _timeLeft = 15;
+  late Timer _timer;
+  bool _timeUp = false;
+  String _nickname = '';
+  List<Map<String, dynamic>> _rankList = [];
 
   final List<Map<String, dynamic>> _questions = [
     {
@@ -102,7 +109,11 @@ class _QuizPageState extends State<QuizPage> {
       _currentQuestionIndex = 0;
       _feedbackMessage = '';
       _isAnswerSelected = false;
+      _timeLeft = 15;
+      _timeUp = false;
     });
+
+    _startTimer();
   }
 
   void _resetQuiz() {
@@ -114,7 +125,31 @@ class _QuizPageState extends State<QuizPage> {
       _currentQuestionIndex = 0;
       _feedbackMessage = '';
       _isAnswerSelected = false;
+      _timeLeft = 15;
+      _timeUp = false;
+      _nickname = ''; 
     });
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_timeLeft > 0) {
+        setState(() {
+          _timeLeft--;
+        });
+      } else {
+        _cancelTimer();
+        setState(() {
+          _timeUp = true;
+        });
+      }
+    });
+  }
+
+  void _cancelTimer() {
+    if (_timer.isActive) {
+      _timer.cancel();
+    }
   }
 
   void _answerQuestion(int selectedOption) {
@@ -127,22 +162,38 @@ class _QuizPageState extends State<QuizPage> {
         _feedbackMessage = 'Verdadeiro! Você acertou.';
       } else {
         _isAnswerCorrect = false;
-        _feedbackMessage = 'Falso! Você errou.';
+        _feedbackMessage = 'Falso! Você errou. A resposta correta é: ${_questions[_currentQuestionIndex]['options'][_questions[_currentQuestionIndex]['answer']]}';
       }
       _isAnswerSelected = true;
+    });
+
+    Future.delayed(Duration(seconds: 1), () {
+      _goToNextQuestion();
     });
   }
 
   void _goToNextQuestion() {
+    if (_timeUp) {
+      return;
+    }
+
+    _cancelTimer();
     if (_currentQuestionIndex < _questions.length - 1) {
       setState(() {
         _currentQuestionIndex++;
         _isAnswerSelected = false;
         _feedbackMessage = '';
+        _timeLeft = 15;
       });
+      _startTimer();
     } else {
       setState(() {
         _quizCompleted = true;
+      });
+      _timer.cancel();
+      _rankList.add({
+        'name': _nickname,
+        'score': _score,
       });
     }
   }
@@ -163,8 +214,20 @@ class _QuizPageState extends State<QuizPage> {
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 20),
+          TextField(
+            onChanged: (value) {
+              setState(() {
+                _nickname = value;
+              });
+            },
+            decoration: InputDecoration(
+              labelText: 'Digite seu nome',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SizedBox(height: 20),
           ElevatedButton(
-            onPressed: _startQuiz,
+            onPressed: _nickname.isEmpty ? null : _startQuiz,
             child: Text('Começar o Quiz', style: TextStyle(fontSize: 20)),
           ),
         ],
@@ -174,6 +237,8 @@ class _QuizPageState extends State<QuizPage> {
 
   Widget _buildQuizQuestion() {
     final question = _questions[_currentQuestionIndex];
+
+    Color progressColor = _timeLeft <= 5 ? Colors.red : Colors.orange;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -199,56 +264,99 @@ class _QuizPageState extends State<QuizPage> {
             );
           }),
           SizedBox(height: 20),
+          LinearProgressIndicator(
+            value: _timeLeft / 15,
+            backgroundColor: Colors.grey[300],
+            valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+            minHeight: 8,
+          ),
+          SizedBox(height: 10),
           Text(
-            'Pontuação: $_score',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            'Tempo restante: $_timeLeft s',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: progressColor),
           ),
           SizedBox(height: 20),
-          if (_feedbackMessage.isNotEmpty)
+          if (_isAnswerSelected)
             Text(
               _feedbackMessage,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _isAnswerCorrect ? Colors.green : Colors.red),
-            ),
-          SizedBox(height: 20),
-          if (_isAnswerSelected)
-            ElevatedButton(
-              onPressed: _goToNextQuestion,
-              child: Text('Próxima Pergunta', style: TextStyle(fontSize: 18)),
+              style: TextStyle(
+                color: _isAnswerCorrect ? Colors.green : Colors.red,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildFinalScreen() {
+  Widget _buildTimeoutScreen() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset(
+            'lib/assets/tempo.jpg',
+            height: 200,
+          ),
+          SizedBox(height: 200),
+          Text(
+            '⏰ O tempo acabou! ⏰',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.red),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _resetQuiz,
+            child: Text('Reiniciar o Quiz', style: TextStyle(fontSize: 18)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuizResults() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Image.asset(
             'lib/assets/final.png',
-            height: 400,
+            height: 200,
           ),
           SizedBox(height: 20),
           Text(
-            '🎉 Parabéns, você concluiu o quiz! 🎉',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.green),
+            '🎉 Parabéns, $_nickname! Você concluiu o quiz! 🎉',
+            style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.green),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 20),
           Text(
-            'Você acertou $_correctAnswers de ${_questions.length} perguntas.',
-            style: TextStyle(fontSize: 24),
+            'Você acertou $_correctAnswers de ${_questions.length} questões.',
+            style: TextStyle(fontSize: 20),
           ),
           SizedBox(height: 20),
           Text(
-            'Pontuação Total: $_score',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            'Sua pontuação: $_score',
+            style: TextStyle(fontSize: 20),
+          ),
+          SizedBox(height: 20),
+          Text(
+            'Ranking:',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 20),
+          Column(
+            children: _rankList
+                .map((rank) => Text(
+                      '${rank['name']} - ${rank['score']} pontos',
+                      style: TextStyle(fontSize: 18),
+                    ))
+                .toList(),
           ),
           SizedBox(height: 40),
           ElevatedButton(
             onPressed: _resetQuiz,
-            child: Text('Tentar Novamente', style: TextStyle(fontSize: 18)),
+            child: Text('Reiniciar Quiz'),
           ),
         ],
       ),
@@ -261,8 +369,10 @@ class _QuizPageState extends State<QuizPage> {
       appBar: AppBar(title: Text('Quiz Naruto')),
       body: _quizStarted
           ? _quizCompleted
-              ? _buildFinalScreen()
-              : _buildQuizQuestion()
+              ? _buildQuizResults()
+              : _timeUp
+                  ? _buildTimeoutScreen()
+                  : _buildQuizQuestion()
           : _buildStartPage(),
     );
   }
