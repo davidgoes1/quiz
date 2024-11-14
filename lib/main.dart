@@ -11,7 +11,26 @@ class QuizApp extends StatelessWidget {
     return MaterialApp(
       title: 'Quiz App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(
+        primaryColor: Colors.orange,
+        scaffoldBackgroundColor: Colors.transparent,
+        colorScheme: ColorScheme(
+          primary: Colors.orange,
+          secondary: Colors.deepPurple,
+          surface: Colors.white,
+          background: Colors.transparent,
+          error: Colors.red,
+          onPrimary: Colors.white,
+          onSecondary: Colors.white,
+          onSurface: Colors.black,
+          onBackground: Colors.black,
+          onError: Colors.white,
+          brightness: Brightness.light,
+        ),
+        buttonTheme: ButtonThemeData(
+          buttonColor: Colors.deepPurple,
+        ),
+      ),
       home: QuizPage(),
     );
   }
@@ -35,7 +54,6 @@ class _QuizPageState extends State<QuizPage> {
   late Timer _timer;
   bool _timeUp = false;
   String _nickname = '';
-  List<Map<String, dynamic>> _rankList = [];
 
   final List<Map<String, dynamic>> _questions = [
     {
@@ -191,10 +209,6 @@ class _QuizPageState extends State<QuizPage> {
         _quizCompleted = true;
       });
       _timer.cancel();
-      _rankList.add({
-        'name': _nickname,
-        'score': _score,
-      });
     }
   }
 
@@ -210,7 +224,7 @@ class _QuizPageState extends State<QuizPage> {
           SizedBox(height: 20),
           Text(
             '🌀 Teste Seu Conhecimento sobre NARUTO! 🌀',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 20),
@@ -222,8 +236,11 @@ class _QuizPageState extends State<QuizPage> {
             },
             decoration: InputDecoration(
               labelText: 'Digite seu nome',
+              labelStyle: TextStyle(color: Colors.white),
+              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
               border: OutlineInputBorder(),
             ),
+            style: TextStyle(color: Colors.white),
           ),
           SizedBox(height: 20),
           ElevatedButton(
@@ -252,15 +269,21 @@ class _QuizPageState extends State<QuizPage> {
           SizedBox(height: 20),
           Text(
             'Questão ${_currentQuestionIndex + 1}: ${question['question']}',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           SizedBox(height: 20),
           ...List.generate(question['options'].length, (index) {
             return ElevatedButton(
-              onPressed: _isAnswerSelected
-                  ? null
-                  : () => _answerQuestion(index),
-              child: Text(question['options'][index]),
+              onPressed: !_isAnswerSelected
+                  ? () => _answerQuestion(index)
+                  : null,
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all<Color>(Colors.deepPurple),
+              ),
+              child: Text(
+                question['options'][index],
+                style: TextStyle(fontSize: 18, color: Colors.white),
+              ),
             );
           }),
           SizedBox(height: 20),
@@ -302,7 +325,7 @@ class _QuizPageState extends State<QuizPage> {
           SizedBox(height: 200),
           Text(
             '⏰ O tempo acabou! ⏰',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.red),
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           SizedBox(height: 20),
           ElevatedButton(
@@ -326,32 +349,18 @@ class _QuizPageState extends State<QuizPage> {
           SizedBox(height: 20),
           Text(
             '🎉 Parabéns, $_nickname! Você concluiu o quiz! 🎉',
-            style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.green),
+            style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 20),
           Text(
             'Você acertou $_correctAnswers de ${_questions.length} questões.',
-            style: TextStyle(fontSize: 20),
+            style: TextStyle(fontSize: 20, color: Colors.white),
           ),
           SizedBox(height: 20),
           Text(
             'Sua pontuação: $_score',
-            style: TextStyle(fontSize: 20),
-          ),
-          SizedBox(height: 20),
-          Text(
-            'Ranking:',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 20),
-          Column(
-            children: _rankList
-                .map((rank) => Text(
-                      '${rank['name']} - ${rank['score']} pontos',
-                      style: TextStyle(fontSize: 18),
-                    ))
-                .toList(),
+            style: TextStyle(fontSize: 20, color: Colors.white),
           ),
           SizedBox(height: 40),
           ElevatedButton(
@@ -366,14 +375,22 @@ class _QuizPageState extends State<QuizPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Quiz Naruto')),
-      body: _quizStarted
-          ? _quizCompleted
-              ? _buildQuizResults()
-              : _timeUp
-                  ? _buildTimeoutScreen()
-                  : _buildQuizQuestion()
-          : _buildStartPage(),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.orange, Colors.deepPurple],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: _quizStarted
+            ? _quizCompleted
+                ? _buildQuizResults()
+                : _timeUp
+                    ? _buildTimeoutScreen()
+                    : _buildQuizQuestion()
+            : _buildStartPage(),
+      ),
     );
   }
 }
